@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Rocket vs UFO 🚀👽</title>
+
+<style>
+    * {
+        box-sizing: border-box;
+    }
+
+    body {
+        margin: 0;
+        background: #05051a;
+        color: white;
+        font-family: Arial, sans-serif;
+        text-align: center;
+        overflow: hidden;
+    }
+
+    h1 {
+        margin: 10px 0 5px;
+        font-size: 24px;
+    }
+
+    #score {
+        font-size: 20px;
+        margin-bottom: 8px;
+    }
+
+    #gameCanvas {
+        display: block;
+        margin: auto;
+        background: linear-gradient(#08082b, #11114d);
+        border: 2px solid white;
+        touch-action: none;
+    }
+
+    #resetBtn {
+        margin-top: 10px;
+        padding: 10px 25px;
+        font-size: 16px;
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+        background: white;
+        color: black;
+    }
+</style>
+</head>
+
+<body>
+
+<h1>🚀 Rocket vs UFO 👽</h1>
+
+<div id="score">Score: 0</div>
+
+<canvas id="gameCanvas" width="360" height="600"></canvas>
+
+<br>
+
+<button id="resetBtn">Reset</button>
+
+<script>
+
+const canvas = document.getElementById("gameCanvas");
+const ctx = canvas.getContext("2d");
+
+const scoreText = document.getElementById("score");
+const resetBtn = document.getElementById("resetBtn");
+
+// Rocket
+let rocket = {
+    x: 160,
+    y: 530,
+    width: 40,
+    height: 50
+};
+
+// UFO
+let ufo = {
+    x: 140,
+    y: 60,
+    width: 70,
+    height: 35
+};
+
+// Bullet
+let bullet = {
+    x: 0,
+    y: 0,
+    width: 6,
+    height: 15,
+    speed: 8,
+    active: false
+};
+
+let score = 0;
+let explosion = {
+    active: false,
+    x: 0,
+    y: 0,
+    timer: 0
+};
+
+// Draw Rocket
+function drawRocket() {
+    ctx.font = "40px Arial";
+    ctx.fillText("🚀", rocket.x, rocket.y + 40);
+}
+
+// Draw UFO
+function drawUFO() {
+    ctx.font = "45px Arial";
+    ctx.fillText("👽", ufo.x, ufo.y + 35);
+}
+
+// Draw Bullet
+function drawBullet() {
+    if (bullet.active) {
+        ctx.fillStyle = "yellow";
+        ctx.fillRect(
+            bullet.x,
+            bullet.y,
+            bullet.width,
+            bullet.height
+        );
+    }
+}
+
+// Draw Explosion
+function drawExplosion() {
+    if (explosion.active) {
+        ctx.font = "45px Arial";
+        ctx.fillText("💥", explosion.x, explosion.y);
+    }
+}
+
+// Collision Detection
+function checkCollision() {
+
+    return (
+        bullet.x < ufo.x + ufo.width &&
+        bullet.x + bullet.width > ufo.x &&
+        bullet.y < ufo.y + ufo.height &&
+        bullet.y + bullet.height > ufo.y
+    );
+}
+
+// Move UFO to random position
+function moveUFO() {
+    ufo.x = Math.random() * (canvas.width - ufo.width);
+}
+
+// Game Loop
+function gameLoop() {
+
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    drawRocket();
+    drawUFO();
+    drawBullet();
+    drawExplosion();
+
+    // Move bullet
+    if (bullet.active) {
+
+        bullet.y -= bullet.speed;
+
+        // Bullet reaches top
+        if (bullet.y < 0) {
+            bullet.active = false;
+        }
+
+        // Bullet hits UFO
+        if (checkCollision()) {
+
+            bullet.active = false;
+
+            score++;
+            scoreText.innerHTML = "Score: " + score;
+
+            // Explosion
+            explosion.active = true;
+            explosion.x = ufo.x;
+            explosion.y = ufo.y;
+
+            // Hide explosion after short time
+            setTimeout(function() {
+                explosion.active = false;
+            }, 400);
+
+            // Move UFO
+            setTimeout(function() {
+                moveUFO();
+            }, 500);
+        }
+    }
+
+    requestAnimationFrame(gameLoop);
+}
+
+// Touch / Mouse movement
+canvas.addEventListener("pointermove", function(event) {
+
+    const rect = canvas.getBoundingClientRect();
+
+    let touchX = event.clientX - rect.left;
+
+    rocket.x = touchX - rocket.width / 2;
+
+    // Keep rocket inside canvas
+    if (rocket.x < 0)
+        rocket.x = 0;
+
+    if (rocket.x > canvas.width - rocket.width)
+        rocket.x = canvas.width - rocket.width;
+});
+
+// Tap Rocket / Canvas to shoot
+canvas.addEventListener("pointerdown", function(event) {
+
+    const rect = canvas.getBoundingClientRect();
+
+    let touchX = event.clientX - rect.left;
+    let touchY = event.clientY - rect.top;
+
+    // Move rocket to touch position
+    rocket.x = touchX - rocket.width / 2;
+
+    if (rocket.x < 0)
+        rocket.x = 0;
+
+    if (rocket.x > canvas.width - rocket.width)
+        rocket.x = canvas.width - rocket.width;
+
+    // Shoot only if bullet is not active
+    if (!bullet.active) {
+
+        bullet.x = rocket.x + rocket.width / 2;
+        bullet.y = rocket.y;
+
+        bullet.active = true;
+
+        // Shooting sound
+        playShootSound();
+    }
+});
+
+// Reset button
+resetBtn.addEventListener("click", function() {
+
+    score = 0;
+
+    scoreText.innerHTML = "Score: 0";
+
+    bullet.active = false;
+
+    explosion.active = false;
+
+    moveUFO();
+});
+
+// Shooting sound using Web Audio
+function playShootSound() {
+
+    const audioContext =
+        new (window.AudioContext || window.webkitAudioContext)();
+
+    const oscillator = audioContext.createOscillator();
+    const gainNode = audioContext.createGain();
+
+    oscillator.type = "square";
+    oscillator.frequency.value = 600;
+
+    gainNode.gain.setValueAtTime(
+        0.1,
+        audioContext.currentTime
+    );
+
+    gainNode.gain.exponentialRampToValueAtTime(
+        0.01,
+        audioContext.currentTime + 0.15
+    );
+
+    oscillator.connect(gainNode);
+    gainNode.connect(audioContext.destination);
+
+    oscillator.start();
+    oscillator.stop(audioContext.currentTime + 0.15);
+}
+
+// Start game
+moveUFO();
+gameLoop();
+
+</script>
+
+</body>
+</html>
